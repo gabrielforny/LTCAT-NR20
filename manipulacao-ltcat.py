@@ -14,6 +14,7 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 import threading
 import pythoncom
+import calendar
 
 USERNAME = os.getenv("USERNAME")
 # Definir o local para o formato brasileiro
@@ -431,6 +432,11 @@ def save_as_pdf(doc_path, output_pdf_path):
     doc.Close()
     word.Quit()
 
+def converter_data_pt_br(data):
+    data_obj = datetime.strptime(data, '%Y-%m-%d')
+
+    return data_obj.strftime('%d/%m/%Y')
+
 def processar_arquivos(progress_label, progress_bar):
     pythoncom.CoInitialize()
     progress_label.config(text="Iniciando processos")
@@ -472,6 +478,20 @@ def processar_arquivos(progress_label, progress_bar):
         progress_label.config(text="Realizando colagem do conteúdo no DESCRIÇÃO DAS ATIVIDADES E DOS RISCOS AMBIENTAIS")
         template_editado = colar_conteudo_em_pag_15(template_output_file_path)
 
+        #Convertendo formado da data de hoje..
+        hoje = datetime.now()
+        ano_atual = datetime.now().year
+        mes_atual = datetime.now().month
+
+        # Obter o nome do mês por extenso
+        nome_mes = calendar.month_name[mes_atual]
+
+        # Formatar o dia com 2 dígitos
+        dia_atual = hoje.day
+
+        # Montar a string final
+        data_formatada = f"{dia_atual:02d} de {nome_mes} de {ano_atual}"
+
         if not nome_documento:
             progress_label.config(text="Nome da empresa não encontrado.")
             print("Nome da empresa não encontrado.")
@@ -484,7 +504,7 @@ def processar_arquivos(progress_label, progress_bar):
                 '00.06.2023' : data_formatacao_documento,
                 'XX.XXX.XXX/XXXX-XX': cnpj,
                 '00/00/2000': data_documento_empresa,
-                'DATA DA ABERTURA DA EMPRESA': infos_cartao_cnpj.get('data_abertura'),
+                'DATA DA ABERTURA DA EMPRESA': converter_data_pt_br(infos_cartao_cnpj.get('data_abertura')),
                 'cnpj': cnpj,
                 'dataAbertura': format_date(infos_cartao_cnpj.get('data_abertura')),
                 'nome_empresa': infos_cartao_cnpj.get('nome_empresa'),
@@ -506,8 +526,8 @@ def processar_arquivos(progress_label, progress_bar):
                 'dataSitCadastral': format_date(infos_cartao_cnpj.get('data_sit_cad')),
                 'situacaoEspecial': "*****",
                 'dataSituacaoEsp': "*****",
-                'ENDEREÇO': '',
-                '00 de maio de 2023': ''
+                'ENDEREÇO': infos_cartao_cnpj.get('logradouro')+', '+infos_cartao_cnpj.get('numero') +' - ' + infos_cartao_cnpj.get('bairro') + ' - ' + infos_cartao_cnpj.get('municipio') + ' - ' + infos_cartao_cnpj.get('uf'),
+                '00 de maio de 2023': data_formatada
             }
             
             caminho_final_editado = output_pdf_path + '\\' + str(ano_atual) + ' - LTCAT - ' + nome_documento
