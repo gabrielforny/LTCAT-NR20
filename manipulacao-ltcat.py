@@ -254,7 +254,7 @@ def format_date(date_str):
             
 def criar_novo_run(paragrafo, texto, negrito=False, fonte="Verdana", tamanho=8):
     novo_run = paragrafo.add_run(texto)
-    novo_run.bold = negrito
+    novo_run.font.bold = negrito
     novo_run.font.name = fonte
     novo_run.font.size = Pt(tamanho)
     return novo_run
@@ -305,7 +305,7 @@ def selecionando_conteudo_setor_adm(word_doc_path, start_line_text):
     doc.Close()
     word.Quit()
     
-def colar_conteudo_em_pag_15(destination_path):
+def colar_conteudo_em_pag_15(destination_path, progress_label):
     word = win32.Dispatch("Word.Application")
     word.Visible = True
     doc = word.Documents.Open(destination_path)
@@ -347,7 +347,7 @@ def colar_conteudo_em_pag_15(destination_path):
     word.Quit()
     time.sleep(2)
     
-    if excluir_tabelas_formatar_e_reorganizar_documento(new_destination_path, word):
+    if excluir_tabelas_formatar_e_reorganizar_documento(new_destination_path, word, progress_label):
         word = win32.Dispatch("Word.Application")
         word.Visible = False
         template_doc = word.Documents.Open(new_destination_path)
@@ -372,11 +372,13 @@ def colar_conteudo_em_pag_15(destination_path):
             print(f"Marcador {placeholder} não encontrado no documento {destination_path}.")
 
         template_doc.SaveAs(new_destination_path)
-
         template_doc.Close()
+        progress_label.config(text="Finalizado formatação das tabelas copiadas")
+        progress_label.config(text=f"Documento final salvo em: {new_destination_path}")
         print(f"Documento final salvo em: {new_destination_path}")
     else:
         print(f"Erro ao reorganizar o documento {new_destination_path}")
+        progress_label.config(text=f"Erro ao reorganizar o documento {new_destination_path}")
 
     return new_destination_path
 
@@ -394,7 +396,8 @@ def remove_blank_paragraphs_after_table(doc, table_range):
             if para.Range.Text.strip() == '':
                 para.Range.Delete()  
                                
-def excluir_tabelas_formatar_e_reorganizar_documento(doc_path, word):
+def excluir_tabelas_formatar_e_reorganizar_documento(doc_path, word, progress_label):
+        progress_label.config(text="Realizando formatação das tabelas copiadas")
         try:
             word = win32.Dispatch("Word.Application")
             word.Visible = False
@@ -409,7 +412,6 @@ def excluir_tabelas_formatar_e_reorganizar_documento(doc_path, word):
                 # Verifica cada célula da tabela para identificar linhas em branco
                 for row in table.Rows:
                     row_text = ''.join([cell.Range.Text.strip() for cell in row.Cells])
-                    print(row_text)
                     if not row_text:  # Se o texto da linha for vazio
                         blank_row_found = True
                         break  # Não precisa verificar mais células desta tabela
@@ -469,6 +471,7 @@ def excluir_tabelas_formatar_e_reorganizar_documento(doc_path, word):
             doc.Close()  # Fecha o documento
             return True
         except pywintypes.com_error as e:
+            progress_label.config(text="Erro ao excluir tabelas, formatar e reorganizar o documento: {e}")
             print(f"Erro ao excluir tabelas, formatar e reorganizar o documento: {e}")
             traceback.print_exc()
             return False
@@ -605,7 +608,7 @@ def processar_arquivos(progress_label, progress_bar):
         time.sleep(2)
         
         progress_label.config(text="Realizando colagem do conteúdo no DESCRIÇÃO DAS ATIVIDADES E DOS RISCOS AMBIENTAIS")
-        template_editado = colar_conteudo_em_pag_15(template_output_file_path)
+        template_editado = colar_conteudo_em_pag_15(template_output_file_path, progress_label)
 
         #Convertendo formado da data de hoje..
         hoje = datetime.now()
