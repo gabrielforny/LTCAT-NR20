@@ -399,15 +399,6 @@ def excluir_tabelas_formatar_e_reorganizar_documento(doc_path, word):
             word = win32.Dispatch("Word.Application")
             word.Visible = False
             doc = word.Documents.Open(doc_path)
-            tables_count = doc.Tables.Count
-
-            # Exclui as primeiras duas tabelas e a última, se houver mais de uma tabela
-            if tables_count >= 2:
-                doc.Tables(1).Delete()
-                doc.Tables(1).Delete()
-
-            if doc.Tables.Count > 0:
-                doc.Tables(doc.Tables.Count).Delete()
 
             # Remover tabelas com linhas em branco
             tables_to_remove = []
@@ -418,6 +409,7 @@ def excluir_tabelas_formatar_e_reorganizar_documento(doc_path, word):
                 # Verifica cada célula da tabela para identificar linhas em branco
                 for row in table.Rows:
                     row_text = ''.join([cell.Range.Text.strip() for cell in row.Cells])
+                    print(row_text)
                     if not row_text:  # Se o texto da linha for vazio
                         blank_row_found = True
                         break  # Não precisa verificar mais células desta tabela
