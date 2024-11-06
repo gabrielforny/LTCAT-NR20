@@ -15,6 +15,8 @@ from PIL import Image, ImageTk
 import threading
 import pythoncom
 import calendar
+import pywintypes
+import traceback
 
 USERNAME = os.getenv("USERNAME")
 # Definir o local para o formato brasileiro
@@ -24,6 +26,7 @@ locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
 pasta_dados = fr"C:\Users\{USERNAME}\Documents\empresas"
 template_file_path = fr"C:\Users\{USERNAME}\Documents\template\2024 - LTCAT PADRÃO - MODELO NR 20 - DR FERNANDO.doc"
 output_pdf_path = fr"C:\Users\{USERNAME}\Desktop\ltcat"
+doc_reorganizado_path = fr"C:\Users\{USERNAME}\Desktop\ltcat\teste.docx"
 
 # Obter a data de hoje
 hoje = datetime.now()
@@ -322,7 +325,7 @@ def colar_conteudo_em_pag_15(destination_path):
         pyautogui.hotkey('ctrl', 'v')
         time.sleep(2)
         print("Conteúdo colado com sucesso.")
-
+        
     except Exception as e:
         print(f"Erro ao tentar colar na página {15}: {e}")
 
@@ -342,7 +345,141 @@ def colar_conteudo_em_pag_15(destination_path):
     doc.SaveAs(new_destination_path)
     doc.Close()
     word.Quit()
+    time.sleep(2)
+    
+    if excluir_tabelas_formatar_e_reorganizar_documento(new_destination_path, word):
+        word = win32.Dispatch("Word.Application")
+        word.Visible = False
+        template_doc = word.Documents.Open(new_destination_path)
+        template_range = template_doc.Content
+
+        placeholder = "{{tabela}}"
+        find_placeholder = template_range.Find
+        find_placeholder.Text = placeholder
+
+        if find_placeholder.Execute():
+            print(f"Marcador {placeholder} encontrado. Colando a tabela.")
+            find_placeholder.Parent.Paste()  # Colar o conteúdo no local do marcador
+
+            # Seleciona a última tabela no documento
+            last_table = template_doc.Tables(template_doc.Tables.Count)
+            last_table_range = last_table.Range
+            last_table_range.Collapse(0)  # Colapsa o cursor para o final da tabela
+
+            # Remover parágrafos vazios após a última tabela
+            remove_blank_paragraphs_after_table(template_doc, last_table_range)
+        else:
+            print(f"Marcador {placeholder} não encontrado no documento {destination_path}.")
+
+        template_doc.SaveAs(new_destination_path)
+
+        template_doc.Close()
+        print(f"Documento final salvo em: {new_destination_path}")
+    else:
+        print(f"Erro ao reorganizar o documento {new_destination_path}")
+
     return new_destination_path
+
+def remove_blank_paragraphs_after_table(doc, table_range):
+    end_of_table = table_range.End
+    range_after_table = doc.Range(end_of_table, doc.Content.End)
+
+    while range_after_table.Text.strip() == '':
+        range_after_table.Delete()  
+        range_after_table = doc.Range(end_of_table, doc.Content.End)  
+
+    if range_after_table.Paragraphs.Count > 0:
+        for i in range(range_after_table.Paragraphs.Count, 0, -1): 
+            para = range_after_table.Paragraphs(i)
+            if para.Range.Text.strip() == '':
+                para.Range.Delete()  
+                               
+def excluir_tabelas_formatar_e_reorganizar_documento(doc_path, word):
+        try:
+            word = win32.Dispatch("Word.Application")
+            word.Visible = False
+            doc = word.Documents.Open(doc_path)
+            tables_count = doc.Tables.Count
+
+            # Exclui as primeiras duas tabelas e a última, se houver mais de uma tabela
+            if tables_count >= 2:
+                doc.Tables(1).Delete()
+                doc.Tables(1).Delete()
+
+            if doc.Tables.Count > 0:
+                doc.Tables(doc.Tables.Count).Delete()
+
+            # Remover tabelas com linhas em branco
+            tables_to_remove = []
+            for i in range(1, doc.Tables.Count + 1):
+                table = doc.Tables(i)
+                blank_row_found = False
+
+                # Verifica cada célula da tabela para identificar linhas em branco
+                for row in table.Rows:
+                    row_text = ''.join([cell.Range.Text.strip() for cell in row.Cells])
+                    if not row_text:  # Se o texto da linha for vazio
+                        blank_row_found = True
+                        break  # Não precisa verificar mais células desta tabela
+
+                # Se encontrou linha em branco, marca a tabela para exclusão
+                if blank_row_found:
+                    tables_to_remove.append(i)
+
+            # Remove as tabelas marcadas
+            for index in reversed(tables_to_remove):  # Reverte a ordem para remover sem perder a referência
+                doc.Tables(index).Delete()
+
+            # Formatar todas as células das tabelas restantes
+            for table in doc.Tables:
+                for row in table.Rows:
+                    for cell in row.Cells:
+                        cell_range = cell.Range
+                        cell_range.Font.Name = 'Verdana'
+                        cell_range.Font.Size = 8
+
+            # Reorganizar o documento
+            range_total = doc.Range()
+            paragraphs = range_total.Paragraphs
+            setor_encontrado = False
+            setor_atual = ""
+            cargo_atual = ""
+            first_setor = True  # Indica se é o primeiro setor encontrado
+            cargo_encontrado = False  # Indica se já encontramos o cargo após o setor
+
+            for paragraph in paragraphs:
+                texto = paragraph.Range.Text.strip()
+
+                # Verifica se o parágrafo começa com "Setor:"
+                if texto.startswith("Setor:"):
+                    # Quebra de página antes de cada novo setor (exceto o primeiro)
+                    if not first_setor and texto != setor_atual:
+                        paragraph.Range.InsertBreak(7)  # 7 é o valor de wdPageBreak (quebra de página)
+                    
+                    # Atualiza o setor atual e define que o próximo setor não é o primeiro
+                    setor_atual = texto
+                    first_setor = False
+                    cargo_encontrado = False  # Reseta o cargo encontrado para o novo setor
+                    continue  # Continua para não adicionar quebras de página entre "Setor:" e o primeiro "Cargo:"
+
+                # Verifica se o parágrafo começa com "Cargo:"
+                if texto.startswith("Cargo:"):
+                    if not cargo_encontrado:
+                        # Se for o primeiro cargo do setor, não insere a quebra de página
+                        cargo_encontrado = True
+                    else:
+                        # Quebra de página antes de cada cargo após o primeiro
+                        paragraph.Range.InsertBreak(7)
+
+            # Seleciona todo o conteúdo reorganizado e copia para a área de transferência
+            range_total.Select()
+            word.Selection.Copy()  # Copia o conteúdo reorganizado para a área de transferência
+            doc.Close()  # Fecha o documento
+            return True
+        except pywintypes.com_error as e:
+            print(f"Erro ao excluir tabelas, formatar e reorganizar o documento: {e}")
+            traceback.print_exc()
+            return False
                          
 def substituir_texto_no_documento(doc, replacements, caminho_final):
     formatar_data_tabela(doc, replacements)
