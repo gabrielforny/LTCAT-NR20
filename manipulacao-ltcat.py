@@ -253,10 +253,17 @@ def format_date(date_str):
         return 'Data inválida'
             
 def criar_novo_run(paragrafo, texto, negrito=False, fonte="Verdana", tamanho=8):
+    # Cria o novo run com o texto
     novo_run = paragrafo.add_run(texto)
+    
+    # Define o negrito explicitamente de várias formas
+    novo_run.bold = negrito
     novo_run.font.bold = negrito
+    
+    # Define a fonte e o tamanho
     novo_run.font.name = fonte
     novo_run.font.size = Pt(tamanho)
+    
     return novo_run
         
 def formatar_data_tabela(doc, replacements):
@@ -476,9 +483,11 @@ def excluir_tabelas_formatar_e_reorganizar_documento(doc_path, word, progress_la
             traceback.print_exc()
             return False
                          
-def substituir_texto_no_documento(doc, replacements, caminho_final):
+def substituir_texto_no_documento(doc, replacements, caminho_final, nome_documento, data_documento):
     formatar_data_tabela(doc, replacements)
-        
+    ja_preencheu = False
+    ja_preencheu_data = False
+    
     def substituir_em_runs(paragrafo, runs, chave, valor):
         full_text = ''.join([run.text for run in runs])
 
@@ -491,8 +500,9 @@ def substituir_texto_no_documento(doc, replacements, caminho_final):
                 # Remover cor de destaque e definir cor do texto como preto
                 run.font.color.rgb = None  # Reseta a cor do texto
                 if run._element.xpath('.//w:highlight'):
-                    run._element.remove(run._element.xpath('.//w:highlight')[0])  # Remove a cor de destaque
-                run.text = ''
+                    run._element.remove(run._element.xpath('.//w:highlight')[0])  # Remove o destaque de cor
+
+                run.text = ''  # Limpa o conteúdo do run
 
             # Recria os runs com o novo texto e aplica negrito ao valor
             partes = novo_texto.split(valor)
@@ -505,7 +515,7 @@ def substituir_texto_no_documento(doc, replacements, caminho_final):
 
                 # Run com o texto restante
                 criar_novo_run(paragrafo, partes[1], fonte="Verdana", tamanho=8)
-              
+
     # Substituição nos parágrafos
     for p in doc.paragraphs:
         for chave, valor in replacements.items():
@@ -519,41 +529,38 @@ def substituir_texto_no_documento(doc, replacements, caminho_final):
                 for p in cell.paragraphs:
                     for chave, valor in replacements.items():
                         if f"{{{{{chave}}}}}" in p.text:
-                            substituir_em_runs(
-                                p, p.runs, f"{{{{{chave}}}}}", valor)
-                                              
+                            substituir_em_runs(p, p.runs, f"{{{{{chave}}}}}", valor)
+
+    # Substituição direta de texto em parágrafos
     for para in doc.paragraphs:
         for old_text, new_text in replacements.items():
-            # Verifica se o texto de substituição está no parágrafo inteiro
             if old_text in para.text:
-                # Substituição direta nos `runs`, mantendo a lógica atual
+                # Guarda o texto original e limpa os runs atuais
+                texto_antigo = para.text
                 for run in para.runs:
-                    if old_text in run.text:
-                        run.text = run.text.replace(old_text, new_text)
-                    elif old_text in para.text:
-                        para.text = para.text.replace(old_text, new_text)
-            
-            # Caso especial: o texto a ser substituído está separado em múltiplos `runs`
-            else:
-                # Concatena o texto de todos os `runs` do parágrafo
-                full_text = "".join(run.text for run in para.runs)
+                    run.text = ''
                 
-                if old_text in full_text:
-                    # Substitui o texto completo do parágrafo
-                    full_text = full_text.replace(old_text, new_text)
+                # Cria novos runs para cada parte do texto substituído
+                partes = texto_antigo.split(old_text)
+                                        
+                for i, parte in enumerate(partes):
+                    print(f"Passou aqui da parte: {parte}")
+                    criar_novo_run(para, parte, fonte="Verdana", tamanho=8)
+                    if i < len(partes) - 1:
+                        print(f"Passou aqui do novo texto: {new_text}")
+                        tamanho_fonte = 8
+                        
+                        if(new_text == nome_documento and ja_preencheu == False):
+                            ja_preencheu = True
+                            tamanho_fonte = 18
+                        
+                        if(new_text == data_documento and ja_preencheu_data == False):
+                            ja_preencheu_data = True
+                            tamanho_fonte = 12
+                            
+                        criar_novo_run(para, new_text, negrito=True, fonte="Verdana", tamanho=tamanho_fonte)
 
-                    # Atualiza os `runs` para refletir a mudança
-                    current_index = 0
-                    for run in para.runs:
-                        # Preenche cada `run` com parte do texto atualizado até que ele termine
-                        if current_index < len(full_text):
-                            run.text = full_text[current_index:current_index + len(run.text)]
-                            current_index += len(run.text)
-                        else:
-                            run.text = ""  # Limpa os `runs` restantes, se houver
-        
     doc.save(caminho_final)
-    # progress_label.config(text="Salvando documento alterado...")
     print('Salvando documento alterado...')
 
 def save_as_pdf(doc_path, output_pdf_path):
@@ -664,7 +671,7 @@ def processar_arquivos(progress_label, progress_bar):
             
             caminho_final_editado = output_pdf_path + '\\' + str(ano_atual) + ' - LTCAT - ' + nome_documento
             progress_label.config(text="Iniciando a substituição dos índices do documento.")
-            substituir_texto_no_documento(template_doc, replacements, caminho_final_editado+'.docx')
+            substituir_texto_no_documento(template_doc, replacements, caminho_final_editado+'.docx', nome_documento, data_documento)
 
             # Salvar o novo documento modificado
             progress_label.config(text="Salvando o documento formado DOCX")
