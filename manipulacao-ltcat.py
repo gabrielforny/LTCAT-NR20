@@ -576,6 +576,46 @@ def converter_data_pt_br(data):
 
     return data_obj.strftime('%d/%m/%Y')
 
+def atualizar_indice(doc_path):
+    pythoncom.CoInitialize()
+    word = win32.Dispatch("Word.Application")
+    word.Visible = False
+    doc = None
+
+    try:
+        doc = word.Documents.Open(doc_path)
+        if doc.TablesOfContents.Count == 0:
+            print(f"Nenhuma Tabela de Conteúdos encontrada em {doc_path}.")
+            return
+
+        for toc in doc.TablesOfContents:
+            toc.Update()
+
+            for paragraph in toc.Range.Paragraphs:
+                for run in paragraph.Range.Words:
+                    if run.Text.strip(): 
+                        run.Font.Name = "Verdana"
+                        run.Font.Size = 8
+                        run.Font.Bold = True
+                        run.Font.ColorIndex = 1 
+                        paragraph.Format.SpaceBefore = 0
+                        paragraph.Format.SpaceAfter = 0
+                        paragraph.Format.LineSpacingRule = 0
+
+            toc.UpdatePageNumbers()
+
+        doc.Fields.Update()
+        doc.Save()
+        print(f"Tabela de Conteúdos formatada e documento salvo com sucesso em {doc_path}.")
+
+    except Exception as e:
+        print(f"Ocorreu um erro no arquivo {doc_path}: {e}")
+    finally:
+        if doc is not None:
+            doc.Close()
+        word.Quit()
+
+
 def processar_arquivos(progress_label, progress_bar):
     pythoncom.CoInitialize()
     progress_label.config(text="Iniciando processos")
@@ -678,6 +718,9 @@ def processar_arquivos(progress_label, progress_bar):
                         
             template_doc.save(output_docx_path)
 
+            progress_label.config(text="Atualizando os indices do Documento")
+            atualizar_indice(output_docx_path)
+            
             # Converter e salvar como PDF
             progress_label.config(text="Salvando o documento formado PDF")
             save_as_pdf(output_docx_path, caminho_final_editado+'.pdf')
