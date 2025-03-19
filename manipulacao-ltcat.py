@@ -1,6 +1,7 @@
 from docx import Document
 import os
 import win32com.client as win32
+import win32com.client
 import re
 from datetime import datetime
 import pypandoc
@@ -23,17 +24,41 @@ USERNAME = os.getenv("USERNAME")
 locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
 
 # Caminhos dos arquivos
-pasta_dados = fr"C:\Users\{USERNAME}\Documents\empresas"
-template_file_path = fr"C:\Users\{USERNAME}\Documents\template\2024 - LTCAT PADRÃO - MODELO NR 20 - DR FERNANDO.doc"
-output_pdf_path = fr"C:\Users\{USERNAME}\Desktop\ltcat"
-doc_reorganizado_path = fr"C:\Users\{USERNAME}\Desktop\ltcat\teste.docx"
+pasta_dados = fr"C:\Users\{USERNAME}\tecnico\PGR-GRO\FORMATAÇÃO\LTCAT NR 20"
+template_file_path = fr"C:\Users\{USERNAME}\tecnico\PGR-GRO\FORMATAÇÃO\TEMPLATE\LTACT NR 20"
+output_pdf_path = fr"C:\Users\{USERNAME}\tecnico\PGR-GRO\00 - RENOVADOS 2024"
 
 # Obter a data de hoje
 hoje = datetime.now()
 
+dia_atual = datetime.now().day
+
 ano_atual = datetime.now().year
 
 mes_atual = datetime.now().month
+
+meses = {
+    1: 'Janeiro', 
+    2: 'Fevereiro', 
+    3: 'Março', 
+    4: 'Abril',
+    
+    5: 'Maio',
+    6: 'Junho',
+    7: 'Julho',
+    8: 'Agosto',
+    9: 'Setembro',
+    10: 'Outubro', 
+    11: 'Novembro',
+    12: 'Dezembro'
+}
+
+mes_corrente = meses[mes_atual]
+
+# Formatar a data de hoje no formato "31 de agosto de 2024"
+data_hoje = f'{dia_atual} de {mes_corrente} de {ano_atual}'
+
+data_hoje_temp = hoje.strftime('%d-%m-%Y')
 
 def convert_to_docx(arquivo):
     try:
@@ -323,13 +348,14 @@ def colar_conteudo_em_pag_15(destination_path, progress_label):
         # Navegar até a página especificada
         selection = word.Selection
         selection.GoTo(What=1, Which=1, Count=15)
-        time.sleep(2)
+        time.sleep(3)
 
         # Mover o cursor para baixo para pular a linha desejada
         selection.MoveDown(Unit=5, Count=1)
         selection.TypeParagraph() # Adicionar uma linha em branco
+        time.sleep(3)
+        selection.Paste()
         time.sleep(2)
-        pyautogui.hotkey('ctrl', 'v')
         time.sleep(2)
         print("Conteúdo colado com sucesso.")
         
@@ -564,12 +590,26 @@ def substituir_texto_no_documento(doc, replacements, caminho_final, nome_documen
     print('Salvando documento alterado...')
 
 def save_as_pdf(doc_path, output_pdf_path):
-    word = win32.Dispatch("Word.Application")
-    word.Visible = False
-    doc = word.Documents.Open(doc_path)
-    doc.SaveAs(output_pdf_path, FileFormat=17)  # Formato PDF
-    doc.Close()
-    word.Quit()
+    try:
+        word = win32.Dispatch("Word.Application")
+        word.Visible = False
+        doc = word.Documents.Open(doc_path)
+        doc.SaveAs(output_pdf_path, FileFormat=17)  # Formato PDF
+        doc.Close()
+        word.Quit()
+    except:
+        word = win32com.client.gencache.EnsureDispatch('Word.Application')
+        word.Visible = False  # Torna invisível para o usuário
+
+        # Abre o arquivo RTF
+        doc = word.Documents.Open(os.path.abspath(doc_path))
+
+        # Salva como PDF
+        output_file_path = os.path.abspath(output_pdf_path)
+        doc.SaveAs(output_file_path, FileFormat=17)  # 17 é o formato PDF
+
+        doc.Close()  # Fecha o documento
+        word.Quit()  # Fecha o aplicativo Word
 
 def converter_data_pt_br(data):
     data_obj = datetime.strptime(data, '%Y-%m-%d')
@@ -623,6 +663,8 @@ def processar_arquivos(progress_label, progress_bar):
     
     arquivos_dados = [f for f in os.listdir(pasta_dados) if f.endswith('.rtf')]
 
+    arquivo_modelo = [f for f in os.listdir(template_file_path) if f.endswith('.docx')]
+
     for arquivo in arquivos_dados:
         progress_label.config(text=f"Processando arquivo: {arquivo}...")
         time.sleep(1)
@@ -630,7 +672,7 @@ def processar_arquivos(progress_label, progress_bar):
         progress_label.config(text="Convertendo os arquivos para DOCX")
         output_docx_path = convert_to_docx(pasta_dados+'\\'+arquivo)
         time.sleep(3)
-        template_output_file_path = convert_to_docx(template_file_path)
+        template_output_file_path = convert_to_docx(template_file_path+'\\'+arquivo_modelo[0])
 
         progress_label.config(text="Leitura do arquivo da Empresa")
         original_doc = read_word_file(output_docx_path)
@@ -706,7 +748,7 @@ def processar_arquivos(progress_label, progress_bar):
                 'situacaoEspecial': "*****",
                 'dataSituacaoEsp': "*****",
                 'ENDEREÇO': infos_cartao_cnpj.get('logradouro')+', '+infos_cartao_cnpj.get('numero') +' - ' + infos_cartao_cnpj.get('bairro') + ' - ' + infos_cartao_cnpj.get('municipio') + ' - ' + infos_cartao_cnpj.get('uf'),
-                '00 de maio de 2023': data_formatada
+                '00 de maio de 2023': data_hoje
             }
             
             caminho_final_editado = output_pdf_path + '\\' + str(ano_atual) + ' - LTCAT - ' + nome_documento
@@ -742,11 +784,11 @@ root.title("Processar Arquivos LTCAT NR20")
 root.geometry("400x300")
 
 # Logo da empresa
-logo_image = Image.open(fr"C:\Users\{USERNAME}\Desktop\ltcat\logo_empresa.jpg")
-logo_image = logo_image.resize((200, 100), Image.LANCZOS)
-logo_photo = ImageTk.PhotoImage(logo_image)
-logo_label = tk.Label(root, image=logo_photo)
-logo_label.pack(pady=10)
+# logo_image = Image.open(fr"C:\Users\{USERNAME}\Desktop\ltcat\logo_empresa.jpg")
+# logo_image = logo_image.resize((200, 100), Image.LANCZOS)
+# logo_photo = ImageTk.PhotoImage(logo_image)
+# logo_label = tk.Label(root, image=logo_photo)
+# logo_label.pack(pady=10)
 
 # Botão para processar arquivos
 botao_processar = tk.Button(
