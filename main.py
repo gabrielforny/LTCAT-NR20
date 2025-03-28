@@ -42,7 +42,6 @@ except locale.Error:
 pasta_dados = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20"
 template_file_path = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\TEMPLATE\LTACT NR 20"
 output_pdf_path = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\DOCUMENTOS FORMATADOS - ROBÔ"
-# logo_image_path = fr"C:\Users\{USERNAME}\tecnico\PGR-GRO\logo_empresa.jpg"
 
 # Obter a data de hoje
 hoje = datetime.now()
