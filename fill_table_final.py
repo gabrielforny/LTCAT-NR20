@@ -21,8 +21,8 @@ def get_first_word_doc(folder_path):
     return os.path.join(folder_path, word_files[0])
 
 
-input = fr"C:\Users\Gabriel\tecnico\PGR - GRO\FORMATAÇÃO\LTCAT NR 20"
-output = fr"C:\Users\Gabriel\tecnico\PGR - GRO\FORMATAÇÃO\TEMPLATE\LTACT NR 20"
+input = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20"
+output = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\TEMPLATE\LTACT NR 20"
 
 # Get the first Word document
 first_word_doc_in = get_first_word_doc(input)
