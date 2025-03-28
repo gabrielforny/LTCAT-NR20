@@ -21,7 +21,7 @@ import traceback
 import pyperclip
 import time
 from fill_table_final import preencher_dados_tabelas_funcao
-
+import pygetwindow as gw
 
 USERNAME = os.getenv("USERNAME")
 # Definir o local para o formato brasileiro
@@ -39,9 +39,9 @@ except locale.Error:
 
 
 # Caminhos dos arquivos
-pasta_dados = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20"
-template_file_path = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\TEMPLATE\LTACT NR 20"
-output_pdf_path = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\DOCUMENTOS FORMATADOS - ROBÔ"
+pasta_dados = f"C:\\Users\\Gabriel\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20"
+template_file_path = f"C:\\Users\\Gabriel\\tecnico\\PGR - GRO\\FORMATAÇÃO\\TEMPLATE\\LTACT NR 20"
+output_pdf_path = f"C:\\Users\\Gabriel\\tecnico\\PGR - GRO\\DOCUMENTOS FORMATADOS - ROBÔ"
 
 # Obter a data de hoje
 hoje = datetime.now()
@@ -684,6 +684,27 @@ def converter_data_pt_br(data):
 
     return data_obj.strftime('%d/%m/%Y')
 
+def fechar_mensagem_word_salvamento(titulo_janela):
+    # Obter todas as janelas abertas
+    janelas = gw.getWindowsWithTitle(titulo_janela)  # Use o título da janela aqui
+
+    if janelas:
+        # Se a janela com o título especificado for encontrada
+        print("Aviso detectado!")
+        try:
+            janela = janelas[0]  # Considera a primeira janela com esse título
+            print("Aviso detectado!")
+
+            # Clica no centro da janela para trazê-la para o primeiro plano
+            pyautogui.click(janela.center)  # Clica no centro da janela
+            print("Janela clicada com sucesso!")
+            time.sleep(2)
+            pyautogui.press('enter')
+        except:
+            print("Não foi possivel clicar na janela Microsoft Word.")
+    else:
+        print("Aviso não detectado.")
+        
 def atualizar_indice(doc_path):
     pythoncom.CoInitialize()
     word = None
@@ -718,7 +739,26 @@ def atualizar_indice(doc_path):
                 print(f"Erro ao atualizar índice: {e}")
                 continue
 
-        doc.Fields.Update()
+        def verificar_avisos():
+                while True:
+                    # Verifica se a janela de aviso do Word aparece
+                    janelas = gw.getWindowsWithTitle('Aviso de Segurança do Microsoft Word')  # Ajuste conforme o título da janela
+                    
+                    if janelas:
+                        janela = janelas[0]  # Seleciona a primeira janela encontrada
+                        print("Aviso de segurança detectado!")
+                        
+                        # Traz a janela para o foco
+                        pyautogui.click(janela.center) 
+                        janela = janelas[0]
+                        time.sleep(2)
+                        pyautogui.press('enter')
+                    else:
+                        print("Aviso não detectado.")
+                        break  # Sai do loop se a janela de aviso não for detectada
+
+        # threading.Thread(target=verificar_avisos, daemon=True).start()
+        # doc.Fields.Update()
         doc.Save()
         
         # Adicionando delay antes de fechar
@@ -770,9 +810,6 @@ def processar_arquivos(progress_label, progress_bar):
     progress_label.config(text="Iniciando processos")
     time.sleep(1)
     
-    preencher_dados_tabelas_funcao()  
-    time.sleep(1)
-    
     arquivos_dados = [f for f in os.listdir(pasta_dados) if f.endswith('.rtf')]
 
     arquivo_modelo = [f for f in os.listdir(template_file_path) if f.endswith('.docx')]
@@ -807,7 +844,7 @@ def processar_arquivos(progress_label, progress_bar):
     progress_label.config(text="Selecionando informações a partir do setor")
     selecionando_conteudo_setor_adm(output_docx_path,"Setor:")
     time.sleep(5)
-    pyautogui.hotkey('enter')
+    fechar_mensagem_word_salvamento('Microsoft Word')
     time.sleep(2)
         
     progress_label.config(text="Realizando colagem do conteúdo no DESCRIÇÃO DAS ATIVIDADES E DOS RISCOS AMBIENTAIS")
@@ -870,9 +907,7 @@ def processar_arquivos(progress_label, progress_bar):
             
         caminho_final_editado = output_pdf_path + '\\' + str(ano_atual) + ' - LTCAT - ' + nome
         progress_label.config(text="Iniciando a substituição dos índices do documento.")
-        substituir_texto_no_documento(template_doc, replacements, caminho_final_editado+'.docx', nome, data_documento)
-
-      
+        substituir_texto_no_documento(template_doc, replacements, caminho_final_editado+'.docx', nome, data_documento)  
         
             # Salvar o novo documento modificado
         progress_label.config(text="Salvando o documento formado DOCX")
@@ -882,6 +917,10 @@ def processar_arquivos(progress_label, progress_bar):
         progress_label.config(text="Atualizando os indices do Documento")
         atualizar_indice(output_docx_path)
             
+        aruivo_obter_dados = [f for f in os.listdir(pasta_dados) if f.endswith('.rtf') and not f.startswith('~$')]
+            
+        preencher_dados_tabelas_funcao(pasta_dados+"\\"+aruivo_obter_dados[0], caminho_final_editado+'.docx')  
+        
             # Converter e salvar como PDF
         progress_label.config(text="Salvando o documento formado PDF")
         save_as_pdf(output_docx_path, caminho_final_editado+'.pdf')

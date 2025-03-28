@@ -19,26 +19,6 @@ def get_first_word_doc(folder_path):
     
     # Return the first Word document found
     return os.path.join(folder_path, word_files[0])
-
-
-input = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20"
-output = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\TEMPLATE\\LTACT NR 20"
-
-# Get the first Word document
-first_word_doc_in = get_first_word_doc(input)
-first_word_doc_out = get_first_word_doc(output)
-
-if first_word_doc_in:
-    print(f"First rtf document found: {first_word_doc_in}")
-else:
-    print("No rtf documents found in the directory")
-    
-
-if first_word_doc_out:
-    print(f"First Word document found: {first_word_doc_out}")
-else:
-    print("No Word documents found in the directory")
-    
     
 def limpar_tabela(tabela):
     """Limpa o conteúdo de todas as células da tabela, mantendo o cabeçalho"""
@@ -79,7 +59,7 @@ def formatar_celula(cell):
     except Exception as e:
         print(f"Erro ao formatar célula: {str(e)}")
 
-def preencher_dados_tabelas_funcao():
+def preencher_dados_tabelas_funcao(first_word_doc_in, first_word_doc_out):
     try:
         # Inicializar COM
         pythoncom.CoInitialize()
@@ -336,18 +316,3 @@ def preencher_dados_tabelas_funcao():
             pass
             
         return False
-
-if __name__ == "__main__":
-    # Exemplo de uso
-    
-    input_path = first_word_doc_in
-    output_path = first_word_doc_out
-    
-    
-    print("Iniciando o processo de preenchimento das tabelas...")
-    if preencher_dados_tabelas_funcao(input_path, output_path):
-        print("Dados das tabelas preenchidos com sucesso")
-    else:
-        print("Erro ao preencher dados das tabelas")
-        
-
