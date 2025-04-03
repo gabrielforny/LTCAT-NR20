@@ -22,6 +22,7 @@ import pyperclip
 import time
 from fill_table_final import preencher_dados_tabelas_funcao
 import pygetwindow as gw
+import shutil
 
 USERNAME = os.getenv("USERNAME")
 # Definir o local para o formato brasileiro
@@ -39,9 +40,10 @@ except locale.Error:
 
 
 # Caminhos dos arquivos
-pasta_dados = f"C:\\Users\\Gabriel\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20"
-template_file_path = f"C:\\Users\\Gabriel\\tecnico\\PGR - GRO\\FORMATAÇÃO\\TEMPLATE\\LTACT NR 20"
-output_pdf_path = f"C:\\Users\\Gabriel\\tecnico\\PGR - GRO\\DOCUMENTOS FORMATADOS - ROBÔ"
+pasta_dados = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20"
+template_file_path = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\TEMPLATE\\LTACT NR 20"
+output_pdf_path = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\DOCUMENTOS FORMATADOS - ROBÔ"
+pasta_executados = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20\\EXECUTADOS"
 
 # Obter a data de hoje
 hoje = datetime.now()
@@ -363,43 +365,52 @@ def formatar_data_tabela(doc, replacements):
    
 def selecionando_conteudo_setor_adm(word_doc_path, start_line_text):
     word = win32.Dispatch("Word.Application")
-    word.Visible = True  
+    word.Visible = False
     doc = word.Documents.Open(word_doc_path)
 
-    time.sleep(3) 
+    time.sleep(2)
 
     try:
-        found = False
-        for paragraph in doc.Paragraphs:
-            if start_line_text in paragraph.Range.Text and not found:
-                found = True
-                # Marca o início da seleção
-                start_range = paragraph.Range.Start
-                
-                # Define o fim da seleção como o final do documento
-                end_range = doc.Content.End
+        start_range = None
+        end_range = None
 
-                # Cria uma range do início até o fim do documento
-                selection_range = doc.Range(Start=start_range, End=end_range)
-                
-                # Seleciona todo o conteúdo
-                selection_range.Select()
-                time.sleep(1)
-                
-                # Copiar usando métodos nativos do Word
-                word.Selection.Copy()
-                time.sleep(2)
-                
-                print("Conteúdo copiado com sucesso.")
+        # 1. Encontrar o ponto inicial (primeira ocorrência de "Setor: ")
+        for paragraph in doc.Paragraphs:
+            if start_line_text in paragraph.Range.Text:
+                start_range = paragraph.Range.Start
+                break
+        
+        if not start_range:
+            print(f"Texto '{start_line_text}' não encontrado.")
+            return
+
+        # 2. Encontrar a última tabela que contém "Conclusão"
+        for table in doc.Tables:
+            if "Conclusão" in table.Range.Text:
+                end_range = table.Range.End  # Atualiza sempre que encontrar
+
+        if not end_range:
+            print("Nenhuma tabela com 'Conclusão' encontrada.")
+            return
+
+        # 3. Ajustar fim da cópia se "Matriz de Risco" existir após "Conclusão"
+        for paragraph in doc.Paragraphs:
+            if "Matriz de Risco" in paragraph.Range.Text and paragraph.Range.Start > end_range:
+                end_range = paragraph.Range.Start  # Ajusta para antes de "Matriz de Risco"
                 break
 
-        if not found:
-            print(f"Texto '{start_line_text}' não encontrado no documento.")
+        # 4. Criar a seleção e copiar o conteúdo
+        selection_range = doc.Range(Start=start_range, End=end_range)
+        selection_range.Select()
+        word.Selection.Copy()
+
+        print("Conteúdo copiado com sucesso até 'Conclusão', ignorando 'Matriz de Risco'.")
 
     except Exception as e:
         print(f"Erro ao copiar conteúdo: {e}")
+
     finally:
-        doc.Close()
+        doc.Close(False)  # Fecha sem salvar
         word.Quit()
     
 def colar_conteudo_em_pag_15(destination_path, progress_label):
@@ -739,26 +750,6 @@ def atualizar_indice(doc_path):
                 print(f"Erro ao atualizar índice: {e}")
                 continue
 
-        def verificar_avisos():
-                while True:
-                    # Verifica se a janela de aviso do Word aparece
-                    janelas = gw.getWindowsWithTitle('Aviso de Segurança do Microsoft Word')  # Ajuste conforme o título da janela
-                    
-                    if janelas:
-                        janela = janelas[0]  # Seleciona a primeira janela encontrada
-                        print("Aviso de segurança detectado!")
-                        
-                        # Traz a janela para o foco
-                        pyautogui.click(janela.center) 
-                        janela = janelas[0]
-                        time.sleep(2)
-                        pyautogui.press('enter')
-                    else:
-                        print("Aviso não detectado.")
-                        break  # Sai do loop se a janela de aviso não for detectada
-
-        # threading.Thread(target=verificar_avisos, daemon=True).start()
-        # doc.Fields.Update()
         doc.Save()
         
         # Adicionando delay antes de fechar
@@ -803,6 +794,26 @@ def atualizar_indice(doc_path):
 
     return True
 
+def mover_arquivos_para_executados():
+    try:
+        # Criar a pasta "Executados" se não existir
+        if not os.path.exists(pasta_executados):
+            os.makedirs(pasta_executados)
+
+        extensoes_permitidas = ('.rtf', '.docx', '.doc')
+
+        # Mover os arquivos processados
+        for arquivo_dados in os.listdir(pasta_dados):
+            if arquivo_dados.endswith(extensoes_permitidas) and not arquivo_dados.startswith('~$'):
+                caminho_origem = os.path.join(pasta_dados, arquivo_dados)
+                caminho_destino = os.path.join(pasta_executados, arquivo_dados)
+
+                # Mover o arquivo
+                shutil.move(caminho_origem, caminho_destino)
+
+                print(f"Arquivo {arquivo_dados} movido para a pasta 'Executados'.")
+    except Exception as e:
+        print(f"Erro ao mover arquivos: {e}")
 
 def processar_arquivos(progress_label, progress_bar):
     pythoncom.CoInitialize()
@@ -813,122 +824,119 @@ def processar_arquivos(progress_label, progress_bar):
     arquivos_dados = [f for f in os.listdir(pasta_dados) if f.endswith('.rtf')]
 
     arquivo_modelo = [f for f in os.listdir(template_file_path) if f.endswith('.docx')]
+    
+    for arquivo_dados in arquivos_dados:
+        #for arquivo in arquivos_dados:
+        progress_label.config(text=f"Processando arquivo: {arquivo_dados}...")
+        time.sleep(1)
+        
+        progress_label.config(text="Convertendo os arquivos para DOCX")
+        output_docx_path = convert_to_docx(pasta_dados+'\\'+ arquivo_dados)
+        time.sleep(3)
+        template_output_file_path = convert_to_docx(template_file_path+'\\'+arquivo_modelo[0])
 
-    
-    #for arquivo in arquivos_dados:
-    progress_label.config(text=f"Processando arquivo: {arquivos_dados[0]}...")
-    time.sleep(1)
-    
-    progress_label.config(text="Convertendo os arquivos para DOCX")
-    output_docx_path = convert_to_docx(pasta_dados+'\\'+arquivos_dados[0])
-    time.sleep(3)
-    template_output_file_path = convert_to_docx(template_file_path+'\\'+arquivo_modelo[0])
 
-
-    progress_label.config(text="Leitura do arquivo da Empresa")
-    original_doc = read_word_file(output_docx_path)
+        progress_label.config(text="Leitura do arquivo da Empresa")
+        original_doc = read_word_file(output_docx_path)
+            
+        progress_label.config(text="Extraindo nome e data do documento")
+        # nome = extrair_nome_documento()
+        data_documento, nome = obter_nome_documento(output_docx_path)
+        data_formatacao_documento = obter_data_hoje_formatacao_documento()
         
-    progress_label.config(text="Extraindo nome e data do documento")
-    # nome = extrair_nome_documento()
-    data_documento, nome = obter_nome_documento(output_docx_path)
-    data_formatacao_documento = obter_data_hoje_formatacao_documento()
-    
-    progress_label.config(text="Obtendo CNPJ do documento")
-    dados_doc_empresa = obter_cnpj_e_data(output_docx_path)
-    cnpj = dados_doc_empresa[0]
-    data_documento_empresa = dados_doc_empresa[1]
+        progress_label.config(text="Obtendo CNPJ do documento")
+        dados_doc_empresa = obter_cnpj_e_data(output_docx_path)
+        cnpj = dados_doc_empresa[0]
+        data_documento_empresa = dados_doc_empresa[1]
+            
+        progress_label.config(text="Obtendo dados sobre o CNPJ através da API")
+        infos_cartao_cnpj = consulta_cartao_cnpj(cnpj)
+            
+        progress_label.config(text="Selecionando informações a partir do setor")
+        selecionando_conteudo_setor_adm(output_docx_path,"Setor:")
+        time.sleep(5)
+        fechar_mensagem_word_salvamento('Microsoft Word')
+        time.sleep(2)
+            
+        progress_label.config(text="Realizando colagem do conteúdo no DESCRIÇÃO DAS ATIVIDADES E DOS RISCOS AMBIENTAIS")
+        template_editado = colar_conteudo_em_pag_15(template_output_file_path, progress_label)
         
-    progress_label.config(text="Obtendo dados sobre o CNPJ através da API")
-    infos_cartao_cnpj = consulta_cartao_cnpj(cnpj)
-        
-    progress_label.config(text="Selecionando informações a partir do setor")
-    selecionando_conteudo_setor_adm(output_docx_path,"Setor:")
-    time.sleep(5)
-    fechar_mensagem_word_salvamento('Microsoft Word')
-    time.sleep(2)
-        
-    progress_label.config(text="Realizando colagem do conteúdo no DESCRIÇÃO DAS ATIVIDADES E DOS RISCOS AMBIENTAIS")
-    template_editado = colar_conteudo_em_pag_15(template_output_file_path, progress_label)
-    
-    
-    
         #Convertendo formado da data de hoje..
-    hoje = datetime.now()
-    ano_atual = datetime.now().year
-    mes_atual = datetime.now().month
+        hoje = datetime.now()
+        ano_atual = datetime.now().year
+        mes_atual = datetime.now().month
 
         # Obter o nome do mês por extenso
-    nome_mes = calendar.month_name[mes_atual]
+        nome_mes = calendar.month_name[mes_atual]
 
         # Formatar o dia com 2 dígitos
-    dia_atual = hoje.day
-    
-    
+        dia_atual = hoje.day
+        
         # Montar a string final
-    data_formatada = f"{dia_atual:02d} de {nome_mes} de {ano_atual}"
+        data_formatada = f"{dia_atual:02d} de {nome_mes} de {ano_atual}"
 
-    if not nome:
-        progress_label.config(text="Nome da empresa não encontrado.")
-        print("Nome da empresa não encontrado.")
-    else:
-            # Ler o arquivo modelo e fazer as substituições
-        template_doc = Document(template_editado)
-        replacements = {
-                'NOME DA EMPRESA': nome,
-                'JUNHO DE 2023': data_documento,
-                '00.06.2023' : data_formatacao_documento,
-                'XX.XXX.XXX/XXXX-XX': cnpj,
-                '00/00/2000': data_documento_empresa,
-                'DATA DA ABERTURA DA EMPRESA': converter_data_pt_br(infos_cartao_cnpj.get('data_abertura')),
-                'cnpj': cnpj,
-                'dataAbertura': format_date(infos_cartao_cnpj.get('data_abertura')),
-                'nome_empresa': infos_cartao_cnpj.get('nome_empresa'),
-                'nomeFantasia': infos_cartao_cnpj.get('nome_fantasia'),
-                'porte': infos_cartao_cnpj.get('porte'),
-                'codigoDescricao': infos_cartao_cnpj.get('codigo_completo'),
-                'codigoDescSec': infos_cartao_cnpj.get('atividade_sec_text'),
-                'codigo_desc_nat': "*****",
-                'logradouro': infos_cartao_cnpj.get('logradouro'),
-                'numero': infos_cartao_cnpj.get('numero'),
-                'complemento': infos_cartao_cnpj.get('complemento'),
-                'cep': infos_cartao_cnpj.get('cep'),
-                'bairro': infos_cartao_cnpj.get('bairro'),
-                'municipio': infos_cartao_cnpj.get('municipio'),
-                'uf': infos_cartao_cnpj.get('uf'),
-                'email': ', '.join(infos_cartao_cnpj.get('emails')),
-                'telefone': ', '.join(infos_cartao_cnpj.get('telefones')),
-                'situacao': infos_cartao_cnpj.get('status_text'),
-                'dataSitCadastral': format_date(infos_cartao_cnpj.get('data_sit_cad')),
-                'situacaoEspecial': "*****",
-                'dataSituacaoEsp': "*****",
-                'ENDEREÇO': infos_cartao_cnpj.get('logradouro')+', '+infos_cartao_cnpj.get('numero') +' - ' + infos_cartao_cnpj.get('bairro') + ' - ' + infos_cartao_cnpj.get('municipio') + ' - ' + infos_cartao_cnpj.get('uf'),
-                '00 de maio de 2023': data_hoje
-            }
+        if not nome:
+            progress_label.config(text="Nome da empresa não encontrado.")
+            print("Nome da empresa não encontrado.")
+        else:
+                # Ler o arquivo modelo e fazer as substituições
+            template_doc = Document(template_editado)
+            replacements = {
+                    'NOME DA EMPRESA': nome,
+                    'JUNHO DE 2023': data_documento,
+                    '00.06.2023' : data_formatacao_documento,
+                    'XX.XXX.XXX/XXXX-XX': cnpj,
+                    '00/00/2000': data_documento_empresa,
+                    'DATA DA ABERTURA DA EMPRESA': converter_data_pt_br(infos_cartao_cnpj.get('data_abertura')),
+                    'cnpj': cnpj,
+                    'dataAbertura': format_date(infos_cartao_cnpj.get('data_abertura')),
+                    'nome_empresa': infos_cartao_cnpj.get('nome_empresa'),
+                    'nomeFantasia': infos_cartao_cnpj.get('nome_fantasia'),
+                    'porte': infos_cartao_cnpj.get('porte'),
+                    'codigoDescricao': infos_cartao_cnpj.get('codigo_completo'),
+                    'codigoDescSec': infos_cartao_cnpj.get('atividade_sec_text'),
+                    'codigo_desc_nat': "*****",
+                    'logradouro': infos_cartao_cnpj.get('logradouro'),
+                    'numero': infos_cartao_cnpj.get('numero'),
+                    'complemento': infos_cartao_cnpj.get('complemento'),
+                    'cep': infos_cartao_cnpj.get('cep'),
+                    'bairro': infos_cartao_cnpj.get('bairro'),
+                    'municipio': infos_cartao_cnpj.get('municipio'),
+                    'uf': infos_cartao_cnpj.get('uf'),
+                    'email': ', '.join(infos_cartao_cnpj.get('emails')),
+                    'telefone': ', '.join(infos_cartao_cnpj.get('telefones')),
+                    'situacao': infos_cartao_cnpj.get('status_text'),
+                    'dataSitCadastral': format_date(infos_cartao_cnpj.get('data_sit_cad')),
+                    'situacaoEspecial': "*****",
+                    'dataSituacaoEsp': "*****",
+                    'ENDEREÇO': infos_cartao_cnpj.get('logradouro')+', '+infos_cartao_cnpj.get('numero') +' - ' + infos_cartao_cnpj.get('bairro') + ' - ' + infos_cartao_cnpj.get('municipio') + ' - ' + infos_cartao_cnpj.get('uf'),
+                    '00 de maio de 2023': data_hoje
+                }
+                
+            caminho_final_editado = output_pdf_path + '\\' + str(ano_atual) + ' - LTCAT - ' + nome
+            progress_label.config(text="Iniciando a substituição dos índices do documento.")
+            substituir_texto_no_documento(template_doc, replacements, caminho_final_editado+'.docx', nome, data_documento)  
             
-        caminho_final_editado = output_pdf_path + '\\' + str(ano_atual) + ' - LTCAT - ' + nome
-        progress_label.config(text="Iniciando a substituição dos índices do documento.")
-        substituir_texto_no_documento(template_doc, replacements, caminho_final_editado+'.docx', nome, data_documento)  
-        
-            # Salvar o novo documento modificado
-        progress_label.config(text="Salvando o documento formado DOCX")
-                        
-        template_doc.save(output_docx_path)
+                # Salvar o novo documento modificado
+            progress_label.config(text="Salvando o documento formado DOCX")
+                            
+            template_doc.save(output_docx_path)
 
-        progress_label.config(text="Atualizando os indices do Documento")
-        atualizar_indice(output_docx_path)
+            progress_label.config(text="Atualizando os indices do Documento")
+            atualizar_indice(output_docx_path)                
+            preencher_dados_tabelas_funcao(pasta_dados+"\\"+arquivo_dados, caminho_final_editado+'.docx')  
             
-        aruivo_obter_dados = [f for f in os.listdir(pasta_dados) if f.endswith('.rtf') and not f.startswith('~$')]
-            
-        preencher_dados_tabelas_funcao(pasta_dados+"\\"+aruivo_obter_dados[0], caminho_final_editado+'.docx')  
-        
-            # Converter e salvar como PDF
-        progress_label.config(text="Salvando o documento formado PDF")
-        save_as_pdf(output_docx_path, caminho_final_editado+'.pdf')
+                # Converter e salvar como PDF
+            progress_label.config(text="Salvando o documento formado PDF")
+            save_as_pdf(output_docx_path, caminho_final_editado+'.pdf')
 
-        progress_label.config(text="Processo finalizado com sucesso!")
-        progress_bar.stop()
-        pythoncom.CoUninitialize()
-        print("Documentos gerados com sucesso!")
+
+    mover_arquivos_para_executados()
+
+    progress_label.config(text="Processo finalizado com sucesso!")
+    progress_bar.stop()
+    pythoncom.CoUninitialize()
+    print("Documentos gerados com sucesso!")
 
 #Função para iniciar a execução em uma thread separada
 def start_process():

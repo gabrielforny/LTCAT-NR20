@@ -1,8 +1,9 @@
-import win32com.client as win32
 import traceback
 import os
 import pythoncom
 import time
+import win32com.client as win32
+import win32com.client
 
 USERNAME = os.getenv("USERNAME")
 
@@ -64,9 +65,13 @@ def preencher_dados_tabelas_funcao(first_word_doc_in, first_word_doc_out):
         # Inicializar COM
         pythoncom.CoInitialize()
         
-        # Inicializar Word
-        word = win32.Dispatch("Word.Application")
-        word.Visible = False
+        try:
+            # Inicializar Word
+            word = win32.Dispatch("Word.Application")
+            word.Visible = False
+        except:
+            word = win32com.client.gencache.EnsureDispatch('Word.Application')
+            word.Visible = False
         
         print(f"Abrindo documento de entrada: {first_word_doc_in}")
         print(f"Abrindo documento de saída: {first_word_doc_out}")
