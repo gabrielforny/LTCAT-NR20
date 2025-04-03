@@ -60,7 +60,7 @@ def formatar_celula(cell):
     except Exception as e:
         print(f"Erro ao formatar célula: {str(e)}")
 
-def preencher_dados_tabelas_funcao(first_word_doc_in, first_word_doc_out):
+def preencher_dados_tabelas_funcao(first_word_doc_in, first_word_doc_out, progress_label):
     try:
         # Inicializar COM
         pythoncom.CoInitialize()
@@ -72,6 +72,9 @@ def preencher_dados_tabelas_funcao(first_word_doc_in, first_word_doc_out):
         except:
             word = win32com.client.gencache.EnsureDispatch('Word.Application')
             word.Visible = False
+        
+        progress_label.config(text=f"Abrindo documento de entrada: {first_word_doc_in}")
+        progress_label.config(text=f"Abrindo documento de saída: {first_word_doc_out}")
         
         print(f"Abrindo documento de entrada: {first_word_doc_in}")
         print(f"Abrindo documento de saída: {first_word_doc_out}")
@@ -87,6 +90,7 @@ def preencher_dados_tabelas_funcao(first_word_doc_in, first_word_doc_out):
         encontrou_cargo = False
         
         print(f"Número total de tabelas no documento de entrada: {doc_input.Tables.Count}")
+        progress_label.config(text=f"Número total de tabelas no documento de entrada: {doc_input.Tables.Count}")
         
         # Procurar nas tabelas do documento de entrada
         i = 1
@@ -192,10 +196,12 @@ def preencher_dados_tabelas_funcao(first_word_doc_in, first_word_doc_out):
                 continue
         
         print(f"\nDados coletados de todos os cargos: {dados_cargos}")
+        progress_label.config(text=f"\nDados coletados de todos os cargos: {dados_cargos}")
         
         # Procurar a tabela de destino no documento de saída
         print(f"\nProcurando tabela de destino no documento de saída...")
         print(f"Número total de tabelas no documento de saída: {doc_output.Tables.Count}")
+        progress_label.config(text=f"\nProcurando tabela de destino no documento de saída...")
         
         tabela_destino = None
         for i in range(1, doc_output.Tables.Count + 1):
@@ -289,6 +295,8 @@ def preencher_dados_tabelas_funcao(first_word_doc_in, first_word_doc_out):
         else:
             print("ERRO: Tabela de destino não encontrada!")
         
+        progress_label.config(text=f"Fechando documentos...")
+        
         print("\nFechando documentos...")
         doc_input.Close()
         doc_output.Close()
@@ -299,6 +307,7 @@ def preencher_dados_tabelas_funcao(first_word_doc_in, first_word_doc_out):
         
     except Exception as e:
         print(f"Erro ao preencher dados das tabelas: {str(e)}")
+        progress_label.config(text=f"Erro ao preencher dados das tabelas: {str(e)}")
         traceback.print_exc()
         
         # Garantir que os documentos sejam fechados em caso de erro

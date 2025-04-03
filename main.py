@@ -39,7 +39,13 @@ except locale.Error:
 
 
 
-# Caminhos dos arquivos
+# Caminhos dos arquivos Máquina
+# pasta_dados = f"C:\\Users\\Gabriel\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20"
+# template_file_path = f"C:\\Users\\Gabriel\\tecnico\\PGR - GRO\\FORMATAÇÃO\\TEMPLATE\\LTACT NR 20"
+# output_pdf_path = f"C:\\Users\\Gabriel\\tecnico\\PGR - GRO\\DOCUMENTOS FORMATADOS - ROBÔ"
+# pasta_executados = f"C:\\Users\\Gabriel\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20\\EXECUTADOS"
+
+# Caminhos dos arquivos Máquina CLIENTE
 pasta_dados = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20"
 template_file_path = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\TEMPLATE\\LTACT NR 20"
 output_pdf_path = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\DOCUMENTOS FORMATADOS - ROBÔ"
@@ -76,7 +82,7 @@ data_hoje = f'{dia_atual} de {mes_corrente} de {ano_atual}'
 
 data_hoje_temp = hoje.strftime('%d-%m-%Y')
 
-def convert_to_docx(arquivo):
+def convert_to_docx(arquivo, isArquivoRtf = False):
     
     try:
         # Initialize COM
@@ -87,13 +93,16 @@ def convert_to_docx(arquivo):
         word.Visible = False 
         doc = word.Documents.Open(arquivo)
 
-        # Salvar como .docx
-        if(arquivo.split('.')[1] == 'rtf'):
-            output_arquivo = arquivo.replace('.rtf', '.docx')
+        caminho_docx = arquivo.replace('.rtf', '.docx')
+                
+        if isArquivoRtf:
+            nome_base, extensao = os.path.splitext(caminho_docx)
+            output_arquivo = f"{nome_base}_manipulado{extensao}"
         else:
-            output_arquivo = arquivo.replace('.doc', '.docx')
-            
-        doc.SaveAs(output_arquivo, FileFormat=16) 
+            output_arquivo = caminho_docx
+        
+        output_file_path = os.path.abspath(output_arquivo)
+        doc.SaveAs(output_file_path, FileFormat=16) 
         doc.Close()
         word.Quit()
         
@@ -831,7 +840,7 @@ def processar_arquivos(progress_label, progress_bar):
         time.sleep(1)
         
         progress_label.config(text="Convertendo os arquivos para DOCX")
-        output_docx_path = convert_to_docx(pasta_dados+'\\'+ arquivo_dados)
+        output_docx_path = convert_to_docx(pasta_dados+'\\'+ arquivo_dados, True)
         time.sleep(3)
         template_output_file_path = convert_to_docx(template_file_path+'\\'+arquivo_modelo[0])
 
@@ -923,8 +932,9 @@ def processar_arquivos(progress_label, progress_bar):
             template_doc.save(output_docx_path)
 
             progress_label.config(text="Atualizando os indices do Documento")
-            atualizar_indice(output_docx_path)                
-            preencher_dados_tabelas_funcao(pasta_dados+"\\"+arquivo_dados, caminho_final_editado+'.docx')  
+            atualizar_indice(output_docx_path)            
+            progress_label.config(text="Preenchendo tabelas de função!")    
+            preencher_dados_tabelas_funcao(pasta_dados+"\\"+arquivo_dados, caminho_final_editado+'.docx', progress_label)  
             
                 # Converter e salvar como PDF
             progress_label.config(text="Salvando o documento formado PDF")
