@@ -824,7 +824,23 @@ def mover_arquivos_para_executados():
     except Exception as e:
         print(f"Erro ao mover arquivos: {e}")
 
+def limpar_gen_py():
+    try:
+        temp_path = os.environ.get('TEMP', os.path.join(os.environ.get('LOCALAPPDATA'), 'Temp'))
+        gen_py_path = os.path.join(temp_path, 'gen_py')
+        
+        if os.path.exists(gen_py_path):
+            shutil.rmtree(gen_py_path)
+            print("Pasta gen_py removida com sucesso.")
+        else:
+            print("Pasta gen_py não encontrada.")
+    except Exception as e:
+        print(f"Erro ao tentar remover pasta gen_py: {str(e)}")
+        
+        
 def processar_arquivos(progress_label, progress_bar):
+    limpar_gen_py()
+    
     pythoncom.CoInitialize()
     
     progress_label.config(text="Iniciando processos")
@@ -891,41 +907,53 @@ def processar_arquivos(progress_label, progress_bar):
                 # Ler o arquivo modelo e fazer as substituições
             template_doc = Document(template_editado)
             replacements = {
-                    'NOME DA EMPRESA': nome,
-                    'JUNHO DE 2023': data_documento,
-                    '00.06.2023' : data_formatacao_documento,
-                    'XX.XXX.XXX/XXXX-XX': cnpj,
-                    '00/00/2000': data_documento_empresa,
-                    'DATA DA ABERTURA DA EMPRESA': converter_data_pt_br(infos_cartao_cnpj.get('data_abertura')),
-                    'cnpj': cnpj,
-                    'dataAbertura': format_date(infos_cartao_cnpj.get('data_abertura')),
-                    'nome_empresa': infos_cartao_cnpj.get('nome_empresa'),
-                    'nomeFantasia': infos_cartao_cnpj.get('nome_fantasia'),
-                    'porte': infos_cartao_cnpj.get('porte'),
-                    'codigoDescricao': infos_cartao_cnpj.get('codigo_completo'),
-                    'codigoDescSec': infos_cartao_cnpj.get('atividade_sec_text'),
-                    'codigo_desc_nat': "*****",
-                    'logradouro': infos_cartao_cnpj.get('logradouro'),
-                    'numero': infos_cartao_cnpj.get('numero'),
-                    'complemento': infos_cartao_cnpj.get('complemento'),
-                    'cep': infos_cartao_cnpj.get('cep'),
-                    'bairro': infos_cartao_cnpj.get('bairro'),
-                    'municipio': infos_cartao_cnpj.get('municipio'),
-                    'uf': infos_cartao_cnpj.get('uf'),
-                    'email': ', '.join(infos_cartao_cnpj.get('emails')),
-                    'telefone': ', '.join(infos_cartao_cnpj.get('telefones')),
-                    'situacao': infos_cartao_cnpj.get('status_text'),
-                    'dataSitCadastral': format_date(infos_cartao_cnpj.get('data_sit_cad')),
-                    'situacaoEspecial': "*****",
-                    'dataSituacaoEsp': "*****",
-                    'ENDEREÇO': infos_cartao_cnpj.get('logradouro')+', '+infos_cartao_cnpj.get('numero') +' - ' + infos_cartao_cnpj.get('bairro') + ' - ' + infos_cartao_cnpj.get('municipio') + ' - ' + infos_cartao_cnpj.get('uf'),
-                    '00 de maio de 2023': data_hoje
-                }
-                
+                'NOME DA EMPRESA': nome,
+                'JUNHO DE 2023': data_documento,
+                '00.06.2023' : data_formatacao_documento,
+                'XX.XXX.XXX/XXXX-XX': cnpj,
+                '00/00/2000': data_documento_empresa,
+                'DATA DA ABERTURA DA EMPRESA': converter_data_pt_br(infos_cartao_cnpj.get('data_abertura')),
+                'cnpj': cnpj,
+                'dataAbertura': format_date(infos_cartao_cnpj.get('data_abertura')),
+                'nome_empresa': infos_cartao_cnpj.get('nome_empresa'),
+                'nomeFantasia': infos_cartao_cnpj.get('nome_fantasia'),
+                'porte': infos_cartao_cnpj.get('porte'),
+                'codigoDescricao': infos_cartao_cnpj.get('codigo_completo'),
+                'codigoDescSec': infos_cartao_cnpj.get('atividade_sec_text'),
+                'codigo_desc_nat': "*****",
+                'logradouro': infos_cartao_cnpj.get('logradouro'),
+                'numero': infos_cartao_cnpj.get('numero'),
+                'complemento': infos_cartao_cnpj.get('complemento'),
+                'cep': infos_cartao_cnpj.get('cep'),
+                'bairro': infos_cartao_cnpj.get('bairro'),
+                'municipio': infos_cartao_cnpj.get('municipio'),
+                'uf': infos_cartao_cnpj.get('uf'),
+                'email': ', '.join(infos_cartao_cnpj.get('emails')) if infos_cartao_cnpj.get('emails') else "*****",
+                'telefone': ', '.join(infos_cartao_cnpj.get('telefones')) if infos_cartao_cnpj.get('telefones') else "*****",
+                'situacao': infos_cartao_cnpj.get('status_text'),
+                'dataSitCadastral': format_date(infos_cartao_cnpj.get('data_sit_cad')),
+                'situacaoEspecial': "*****",
+                'dataSituacaoEsp': "*****",
+                'ENDEREÇO': (
+                    (infos_cartao_cnpj.get('logradouro') or '') + ', ' +
+                    (infos_cartao_cnpj.get('numero') or '') + ' - ' +
+                    (infos_cartao_cnpj.get('bairro') or '') + ' - ' +
+                    (infos_cartao_cnpj.get('municipio') or '') + ' - ' +
+                    (infos_cartao_cnpj.get('uf') or '')
+                ),
+                '00 de maio de 2023': data_hoje
+            }
+
+            # Tratativa para evitar "None"
+            for key, value in replacements.items():
+                if value is None or str(value).strip().lower() == "none":
+                    replacements[key] = "*****"
+
+            # Substituição no documento
             caminho_final_editado = output_pdf_path + '\\' + str(ano_atual) + ' - LTCAT - ' + nome
             progress_label.config(text="Iniciando a substituição dos índices do documento.")
-            substituir_texto_no_documento(template_doc, replacements, caminho_final_editado+'.docx', nome, data_documento)  
-            
+            substituir_texto_no_documento(template_doc, replacements, caminho_final_editado+'.docx', nome, data_documento)
+
                 # Salvar o novo documento modificado
             progress_label.config(text="Salvando o documento formado DOCX")
                             
