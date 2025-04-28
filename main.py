@@ -46,10 +46,10 @@ except locale.Error:
 # pasta_executados = f"C:\\Users\\Gabriel\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20\\EXECUTADOS"
 
 # Caminhos dos arquivos Máquina CLIENTE
-pasta_dados = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20"
-template_file_path = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\TEMPLATE\\LTACT NR 20"
-output_pdf_path = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\DOCUMENTOS FORMATADOS - ROBÔ"
-pasta_executados = f"\\\\192.168.0.2\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20\\EXECUTADOS"
+pasta_dados = f"C:\\Users\\Usuario\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20"
+template_file_path = f"C:\\Users\\Usuario\\tecnico\\PGR - GRO\\FORMATAÇÃO\\TEMPLATE\\LTACT NR 20"
+output_pdf_path = f"C:\\Users\\Usuario\\tecnico\\PGR - GRO\\DOCUMENTOS FORMATADOS - ROBÔ"
+pasta_executados = f"C:\\Users\\Usuario\\tecnico\\PGR - GRO\\FORMATAÇÃO\\LTCAT NR 20\\EXECUTADOS"
 
 # Obter a data de hoje
 hoje = datetime.now()
