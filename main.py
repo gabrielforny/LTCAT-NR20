@@ -907,7 +907,7 @@ def processar_arquivos(progress_label, progress_bar):
                 # Ler o arquivo modelo e fazer as substituições
             template_doc = Document(template_editado)
             replacements = {
-                'NOME DA EMPRESA': nome,
+                'NOME DA EMPRESA': nome.reaplace('_manipulado',''),
                 'JUNHO DE 2023': data_documento,
                 '00.06.2023' : data_formatacao_documento,
                 'XX.XXX.XXX/XXXX-XX': cnpj,
