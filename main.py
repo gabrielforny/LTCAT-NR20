@@ -164,7 +164,7 @@ def obter_nome_documento(file_path):
     if match:
         year = match.group(2)
         month = match.group(1).upper()  # Converter para maiúsculas
-        nome = match.group(4).replace('.docx','').replace('.doc','').replace('.rtf','').replace('.pdf','') 
+        nome = match.group(4).replace('.docx','').replace('.doc','').replace('.rtf','').replace('.pdf','').replace('_manipulado','')
 
         # Dicionário para mapear os meses para o formato desejado
         meses = {
@@ -907,7 +907,7 @@ def processar_arquivos(progress_label, progress_bar):
                 # Ler o arquivo modelo e fazer as substituições
             template_doc = Document(template_editado)
             replacements = {
-                'NOME DA EMPRESA': nome.reaplace('_manipulado',''),
+                'NOME DA EMPRESA': nome,
                 'JUNHO DE 2023': data_documento,
                 '00.06.2023' : data_formatacao_documento,
                 'XX.XXX.XXX/XXXX-XX': cnpj,
