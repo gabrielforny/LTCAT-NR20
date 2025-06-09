@@ -454,7 +454,9 @@ def colar_conteudo_em_pag_15(destination_path, progress_label):
             print("Título encontrado!")
             selection.MoveDown(Unit=5, Count=1)
             selection.TypeParagraph()
-            word.Selection.Paste()
+            word.Selection.PasteAndFormat(16)  # Cola como texto simples
+            word.Selection.Font.Name = "Verdana"
+            word.Selection.Font.Size = 8
             print("Conteúdo colado com sucesso após o título.")
         else:
             # Se não encontrou, vamos tentar imprimir todos os parágrafos para debug
