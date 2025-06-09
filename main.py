@@ -964,7 +964,7 @@ def processar_arquivos(progress_label, progress_bar):
             progress_label.config(text="Atualizando os indices do Documento")
             atualizar_indice(output_docx_path)            
             progress_label.config(text="Preenchendo tabelas de função!")    
-            preencher_dados_tabelas_funcao(pasta_dados+"\\"+arquivo_dados, caminho_final_editado+'.docx', progress_label)  
+            preencher_dados_tabelas_funcao(pasta_dados+"\\"+arquivo_dados, caminho_final_editado+'.docx')  
             
                 # Converter e salvar como PDF
             progress_label.config(text="Salvando o documento formado PDF")
