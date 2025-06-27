@@ -23,6 +23,7 @@ import time
 from fill_table_final import preencher_dados_tabelas_funcao
 import pygetwindow as gw
 import shutil
+import unicodedata
 
 USERNAME = os.getenv("USERNAME")
 # Definir o local para o formato brasileiro
@@ -455,8 +456,9 @@ def colar_conteudo_em_pag_15(destination_path, progress_label):
             selection.MoveDown(Unit=5, Count=1)
             selection.TypeParagraph()
             word.Selection.PasteAndFormat(16)  # Cola como texto simples
-            word.Selection.Font.Name = "Verdana"
-            word.Selection.Font.Size = 8
+            pasted_range = word.Selection.Range
+            pasted_range.Font.Name = "Verdana"
+            pasted_range.Font.Size = 8
             print("Conteúdo colado com sucesso após o título.")
         else:
             # Se não encontrou, vamos tentar imprimir todos os parágrafos para debug
@@ -838,9 +840,31 @@ def limpar_gen_py():
             print("Pasta gen_py não encontrada.")
     except Exception as e:
         print(f"Erro ao tentar remover pasta gen_py: {str(e)}")
+    
+def normalizar_nome(nome):
+    return unicodedata.normalize('NFKD', nome)   
         
-        
-def processar_arquivos(progress_label, progress_bar):
+def processar_arquivos(progress_label, progress_bar):                
+    for arquivo in os.listdir(pasta_dados):
+        nome_normalizado = normalizar_nome(arquivo)
+        if "Editado" in nome_normalizado and arquivo.endswith(".docx"):
+            caminho_arquivo = os.path.join(pasta_dados, arquivo)
+            try:
+                os.remove(caminho_arquivo)
+                print(f"Arquivo apagado: {arquivo}")
+            except Exception as e:
+                print(f"Erro ao apagar {arquivo}: {e}")
+                
+    for arquivo in os.listdir(template_file_path):
+        nome_normalizado = normalizar_nome(arquivo)
+        if "Editado" in nome_normalizado and arquivo.endswith(".docx"):
+            caminho_arquivo = os.path.join(template_file_path, arquivo)
+            try:
+                os.remove(caminho_arquivo)
+                print(f"Arquivo apagado: {arquivo}")
+            except Exception as e:
+                print(f"Erro ao apagar {arquivo}: {e}")
+                
     limpar_gen_py()
     
     pythoncom.CoInitialize()
