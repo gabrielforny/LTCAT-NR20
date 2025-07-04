@@ -270,10 +270,22 @@ def preencher_dados_tabelas_funcao(first_word_doc_in, first_word_doc_out):
                 print(f"\nVerificando tabela {i} de {doc_output.Tables.Count}")
                 primeira_celula = table.Cell(1, 1).Range.Text.strip()
                 print(f"Conteúdo da primeira célula: {primeira_celula}")
-                if "CARGO/ATIVIDADE" in primeira_celula:
+                if "CARGO/ATIVIDADE" in primeira_celula or "FUNÇÃO/CARGO" in primeira_celula:
                     tabela_destino = table
                     print("Tabela de destino encontrada!")
                     break
+                
+                if any(keyword in primeira_celula.upper() for keyword in ["CARGO/ATIVIDADE", "FUNÇÃO/CARGO"]):
+                    tabela_destino = table
+                    print("Tabela de destino encontrada!")
+                    break
+                
+                primeira_celula = table.Cell(1, 1).Range.Text.strip().replace('\r', '').replace('\x07', '').upper()
+                if any(keyword in primeira_celula for keyword in ["CARGO/ATIVIDADE", "FUNÇÃO/CARGO"]):
+                    tabela_destino = table
+                    print("Tabela de destino encontrada!")
+                    break
+
             except Exception as table_error:
                 print(f"Erro ao verificar tabela {i}: {str(table_error)}")
                 continue
